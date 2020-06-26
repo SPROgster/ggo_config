@@ -460,8 +460,8 @@ func Test_X_GgoConfig_Parse(t *testing.T) {
 	}
 	file.checkMultiEntry(t, "sync-neighbour", values)
 
-	if len(file.fields) != 0 {
-		t.Errorf("Some fields (%d) left unprocessed %v\n", len(file.fields), file.fields)
+	if len(file.Fields) != 0 {
+		t.Errorf("Some Fields (%d) left unprocessed %v\n", len(file.Fields), file.Fields)
 	}
 }
 
@@ -511,8 +511,8 @@ func Test_GgoConfig_Merge(t *testing.T) {
 	result.checkEntry(t, false, "tb.asym.ipv4_fragmented.bps.24.speed", "625000", "some comment")
 
 
-	if len(result.fields) != 0 {
-		t.Errorf("Some fields (%d) left unprocessed %v\n", len(result.fields), result.fields)
+	if len(result.Fields) != 0 {
+		t.Errorf("Some Fields (%d) left unprocessed %v\n", len(result.Fields), result.Fields)
 	}
 }
 

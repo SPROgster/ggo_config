@@ -9,38 +9,38 @@ import (
 )
 
 type Config struct {
-	fields map[string]ConfigEntryInterface
-	multipleList map[string]bool
+	Fields       map[string]ConfigEntryInterface
+	MultipleList map[string]bool
 }
 
 func NewConfig() *Config {
 	c := new(Config)
-	c.multipleList = make(map[string]bool)
-	c.fields = make(map[string]ConfigEntryInterface)
+	c.MultipleList = make(map[string]bool)
+	c.Fields = make(map[string]ConfigEntryInterface)
 	return c
 }
 
 func (f *Config) CopyScheme() *Config {
 	c := NewConfig()
-	c.multipleList = make(map[string]bool, len(f.multipleList))
-	for k, v := range f.multipleList {
-		c.multipleList[k] = v
+	c.MultipleList = make(map[string]bool, len(f.MultipleList))
+	for k, v := range f.MultipleList {
+		c.MultipleList[k] = v
 	}
-	c.fields = make(map[string]ConfigEntryInterface)
+	c.Fields = make(map[string]ConfigEntryInterface)
 
 	return c
 }
 
 func (f *Config) SetKeyMultiple(name string, isMultple bool) {
 	if isMultple {
-		f.multipleList[name] = isMultple
-	} else if _, exists := f.multipleList[name]; exists {
-		delete(f.multipleList, name)
+		f.MultipleList[name] = isMultple
+	} else if _, exists := f.MultipleList[name]; exists {
+		delete(f.MultipleList, name)
 	}
 }
 
 func (f *Config) isMultiple(name string) bool {
-	if isMultiple, exists := f.multipleList[name]; exists {
+	if isMultiple, exists := f.MultipleList[name]; exists {
 		return isMultiple
 	}
 	return false
@@ -49,13 +49,13 @@ func (f *Config) isMultiple(name string) bool {
 func (f *Config) setWhileParsing(e *ConfigEntry) {
 	name := e.Name()
 
-	if another, exists := f.fields[name]; exists {
-		f.fields[name] = another.ChooseActiveOrReduce(e)
+	if another, exists := f.Fields[name]; exists {
+		f.Fields[name] = another.ChooseActiveOrReduce(e)
 	} else {
 		if f.isMultiple(name) {
-			f.fields[name] = e.MakeMultiple()
+			f.Fields[name] = e.MakeMultiple()
 		} else {
-			f.fields[name] = e
+			f.Fields[name] = e
 		}
 	}
 }
@@ -67,26 +67,26 @@ func (f *Config) Set(e *ConfigEntry) {
 
 	name := e.Name()
 
-	if _, exists := f.fields[name]; exists {
-		f.fields[name] = e
+	if _, exists := f.Fields[name]; exists {
+		f.Fields[name] = e
 	} else {
 		if f.isMultiple(name) {
-			f.fields[name] = e.MakeMultiple()
+			f.Fields[name] = e.MakeMultiple()
 		} else {
-			f.fields[name] = e
+			f.Fields[name] = e
 		}
 	}
 }
 
 func (f *Config) Get(name string) ConfigEntryInterface {
-	return f.fields[name]
+	return f.Fields[name]
 }
 
 func (f *Config) Delete(name string) ConfigEntryInterface {
-	r, exists := f.fields[name]
+	r, exists := f.Fields[name]
 
 	if exists {
-		delete(f.fields, name)
+		delete(f.Fields, name)
 		return r
 	} else {
 		return nil
@@ -94,14 +94,14 @@ func (f *Config) Delete(name string) ConfigEntryInterface {
 }
 
 func (f *Config) DeleteValue(name string, value string) *ConfigEntry {
-	e, exists := f.fields[name]
+	e, exists := f.Fields[name]
 	if !exists {
 		return nil
 	}
 
 	switch v := e.(type) {
 	case *ConfigEntry:
-		delete(f.fields, name)
+		delete(f.Fields, name)
 		return v
 	case *ConfigMultiEntry:
 		return v.Delete(value)
@@ -128,7 +128,7 @@ func (f *Config) FromFile(file *os.File) error {
 }
 
 func (f *Config) FromString(str string) {
-	f.fields = make(map[string]ConfigEntryInterface)
+	f.Fields = make(map[string]ConfigEntryInterface)
 	for _, v := range strings.Split(str,"\n") {
 		e := ParseString(v)
 		if e == nil {
@@ -139,7 +139,7 @@ func (f *Config) FromString(str string) {
 }
 
 func (f *Config) FromStrings(strs []string) {
-	f.fields = make(map[string]ConfigEntryInterface, len(strs))
+	f.Fields = make(map[string]ConfigEntryInterface, len(strs))
 	for _, v := range strs {
 		e := ParseString(v)
 		if e == nil {
@@ -173,7 +173,7 @@ func (f *Config) mergeSchemes(configs ...*Config) {
 		if c == nil {
 			continue
 		}
-		for k, m := range c.multipleList {
+		for k, m := range c.MultipleList {
 			if m {
 				f.SetKeyMultiple(k, true)
 			}
@@ -186,7 +186,7 @@ func (f *Config) mergeSingleKeys(configs ...*Config) {
 		if conf == nil {
 			continue
 		}
-		for k := range conf.fields {
+		for k := range conf.Fields {
 			if f.isMultiple(k) {
 				continue
 			}
@@ -196,16 +196,16 @@ func (f *Config) mergeSingleKeys(configs ...*Config) {
 }
 
 func (f *Config) mergeMultiKeys(configs ...*Config) {
-	for k := range f.multipleList {
+	for k := range f.MultipleList {
 		v := new(ConfigMultiEntry)
 		for _, c := range configs {
 			if c == nil {
 				continue
 			}
-			v.Merge(c.fields[k])
+			v.Merge(c.Fields[k])
 		}
 		if v.Entries != nil {
-			f.fields[k] = v
+			f.Fields[k] = v
 		}
 	}
 }
@@ -267,15 +267,15 @@ func (f *Config) Write(Filename string) error {
 	}
 	defer file.Close()
 
-	keys := make([]string, 0, len(f.fields))
-	for k, _ := range f.fields {
+	keys := make([]string, 0, len(f.Fields))
+	for k, _ := range f.Fields {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	w := bufio.NewWriter(file)
 	for _, k := range keys {
-		v := f.fields[k]
+		v := f.Fields[k]
 		w.WriteString(v.StringLn())
 	}
 	return w.Flush()
@@ -283,7 +283,7 @@ func (f *Config) Write(Filename string) error {
 
 func (f *Config) String() string {
 	var res string
-	for _, v := range f.fields {
+	for _, v := range f.Fields {
 		res += v.StringLn()
 	}
 	if len(res) > 1 {
@@ -293,5 +293,5 @@ func (f *Config) String() string {
 }
 
 func (f *Config) Len() int {
-	return len(f.fields)
+	return len(f.Fields)
 }
