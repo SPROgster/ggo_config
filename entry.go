@@ -1,6 +1,10 @@
 package ggo
 
-import "strings"
+import (
+	"errors"
+	"os"
+	"strings"
+)
 
 type ConfigEntry struct {
 	IsActive bool
@@ -8,6 +12,10 @@ type ConfigEntry struct {
 	Value    string
 	Comment  string
 }
+
+var (
+	CommentOnly = errors.New("comment only value")
+)
 
 type ConfigEntryInterface interface {
 	Name() string
@@ -34,6 +42,33 @@ func removeEmpty(strs []string) []string {
 	return result
 }
 
+func getValue(line []string) (*string, []string, error) {
+	if line[0][0] == '#' {
+		return nil, line, nil
+	}
+
+	if line[0][0] != '"' {
+		// Comment
+		if len(line) > 1 && line[1][0] != '#' {
+			return nil, nil, CommentOnly
+		}
+		return &line[0], line[1:], nil
+	}
+
+	for i, v := range line {
+		l := len(v)
+		if l > 2 && v[l-2:] == "\\\"" {
+			continue
+		}
+
+		if l > 0 && v[l-1] == '"' {
+			v := strings.Join(line[:i+1], " ")
+			return &v, line[i+1:], nil
+		}
+	}
+	return nil, nil, os.ErrInvalid
+}
+
 func ParseString(str string) *ConfigEntry {
 	e := new(ConfigEntry)
 
@@ -45,15 +80,12 @@ func ParseString(str string) *ConfigEntry {
 
 	line := strings.Split(strTrimmed, " ")
 	line = removeEmpty(line)
-	for i, s := range line {
-		line[i] = strings.TrimSpace(s)
-	}
 
 	// is_active
 	e.IsActive = true
 	for ; line[0] == "#" || line[0][0] == '#' && len(line) > 0; {
 		e.IsActive = false
-		if (line[0] == "#") {
+		if line[0] == "#" {
 			line = line[1:]
 		} else {
 			line[0] = line[0][1:]
@@ -61,44 +93,29 @@ func ParseString(str string) *ConfigEntry {
 	}
 
 	if len(line) > 0 {
-		// name
-		e.name = line[0]
-		line = line[1:]
+		e.name = strings.TrimSpace(line[0])
 
-		if len(line) > 0 {
-			v := line[0]
-			line = line[1:]
-
-			if v[0] == '#' {
-				e.Comment = strings.Join(line, " ")
-				return e
-			}
-
-			if v[0] == '#' {
-				v = v[1:]
-				line = append([]string{v}, line...)
-				e.Comment = strings.Join(line, " ")
-				return e
-			}
-
-			e.Value = v
-
-			// Following comment
-			if len(line) > 0 {
-				v := line[0]
-				line = line[1:]
-
-				if v == "#" {
-					e.Comment = strings.Join(line, " ")
-				} else if v[0] == '#' {
-					v = v[1:]
-					line = append([]string{v}, line...)
-					e.Comment = strings.Join(line, " ")
-				} else {
-					// Comment string or just string
+		if len(line) > 1 {
+			vPtr, otherTokens, err := getValue(line[1:])
+			if err != nil {
+				if err == CommentOnly {
 					return nil
 				}
+
+				// TODO return error
+				return nil
 			}
+
+			if vPtr != nil {
+				e.Value = *vPtr
+			}
+
+			if len(otherTokens) > 0 && otherTokens[0][0] == '#' {
+				otherTokens[0] = otherTokens[0][1:]
+				e.Comment = strings.TrimSpace(strings.Join(otherTokens, " "))
+			}
+
+			return e
 		}
 	} else {
 		return nil

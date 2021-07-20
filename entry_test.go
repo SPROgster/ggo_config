@@ -1,6 +1,8 @@
 package ggo
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestParseString(t *testing.T) {
 	got := ParseString("")
@@ -42,7 +44,6 @@ func TestParseString(t *testing.T) {
 	if got == nil || got.IsActive || got.Name() != "TCP" || got.Value != "" || got.Comment != "" {
 		t.Errorf("'%s' parse error %v\n", "## TCP", got)
 	}
-
 }
 
 func TestConfigEntry_String(t *testing.T) {
@@ -59,4 +60,15 @@ func TestConfigEntry_String(t *testing.T) {
 	}
 }
 
+func TestConfigEntry_String_Long(t *testing.T) {
+	s := "filter.rule \"udp port 11211\" # sdfasdf"
+	got := ParseString(s)
+	if got == nil || !got.IsActive || got.Value != "\"udp port 11211\"" || got.name != "filter.rule" || got.Comment != "sdfasdf" {
+		t.Errorf("'%s' parse error %v\n", s, got)
+	}
 
+	gots := got.String()
+	if gots != s {
+		t.Errorf("'%s' stringify error %v '%s'\n", s, got, gots)
+	}
+}
